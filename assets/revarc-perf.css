@@ -11,7 +11,7 @@
     backdrop-filter:none!important;
     -webkit-backdrop-filter:none!important;
   }
-  .card::after,.card.glass::after,.panel.glass::after,.sheen::after{display:none!important}
+  .sheen::after{display:none!important}
   .tilt{will-change:auto}
   .cdot,.sd,.rhpulse{animation:none!important}
   .rk-nav-backdrop,.rk-more-pop,.wb-overlay{
