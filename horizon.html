@@ -6,7 +6,10 @@
 <title>RevArc Command Centre · Revenue Horizon · v4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/revarc-perf.css">
+<script src="assets/revarc-perf.js"></script>
 <style>
 :root[data-theme="dark"]{
   --bg-base:#050607; --bg-sunken:#020303;
@@ -1055,6 +1058,7 @@ body.cursor-on .cursor-ring.hot{width:44px;height:44px;opacity:.55;background:tr
 
 <script>
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lowPerf = window.rkPerf ? rkPerf.low : (reduce || matchMedia('(max-width:760px)').matches || matchMedia('(pointer:coarse)').matches);
 
 function hexA(h,a){h=String(h).trim().replace('#','');if(h.length===3)h=h.split('').map(x=>x+x).join('');const n=parseInt(h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;}
 function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
@@ -1130,7 +1134,7 @@ if(matchMedia('(hover:hover) and (pointer:fine)').matches && !reduce){
 }
 
 // ---- moving sheen (scroll-driven) ----
-function updateSheen(){const y=window.scrollY||document.documentElement.scrollTop;document.documentElement.style.setProperty('--sheen',Math.min(y/700,1)*100+'%');}
+function updateSheen(){if(lowPerf)return;const y=window.scrollY||document.documentElement.scrollTop;document.documentElement.style.setProperty('--sheen',Math.min(y/700,1)*100+'%');}
 addEventListener('scroll',updateSheen,{passive:true});
 
 // ---- odometer + counters ----
@@ -1324,7 +1328,7 @@ const ENG_K=0.5, ENG_SMOOTH=ENG_K/3;           // Catmull-Rom -> bezier tension
 const ENG_ENGAGED=20;                          // global month index of engagement (Mar 2026)
 let engRenderers=[], engRAF=null, engReveal=1; // intro reveal 0..1
 
-function engDPR(){return Math.min(devicePixelRatio||1,2);}
+function engDPR(){return window.rkPerf?rkPerf.dpr():Math.min(devicePixelRatio||1,2);}
 function engPrep(cv){
   const w=cv.clientWidth||cv.parentNode.clientWidth||300;
   const h=cv.clientHeight||cv.parentNode.clientHeight||150;
@@ -1717,7 +1721,7 @@ function boot(){
   buildHeatmap();
   recalc(!reduce);
   try{ buildCharts(); }catch(err){ console.error('chart build failed',err); sparkFallback(); }
-  updateSheen();
+  if(!lowPerf) updateSheen();
   initExport();
   // Live drift disabled: the hero is a lifetime scoreboard, so it must land on the same canonical figure every load.
 }

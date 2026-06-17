@@ -6,7 +6,10 @@
 <title>RevArc Command Centre · Guest Matrix · v1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/revarc-perf.css">
+<script src="assets/revarc-perf.js"></script>
 <style>
 :root[data-theme="dark"]{
   --bg-base:#050607; --bg-sunken:#020303;
@@ -1111,6 +1114,8 @@ body.cursor-on .cursor-ring.hot{width:44px;height:44px;opacity:.55;background:tr
 
 <script>
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lowPerf = window.rkPerf ? rkPerf.low : (reduce || matchMedia('(max-width:760px)').matches || matchMedia('(pointer:coarse)').matches);
+function canvasLive(){ return !lowPerf && !document.hidden; }
 
 function hexA(h,a){h=String(h).trim().replace('#','');if(h.length===3)h=h.split('').map(x=>x+x).join('');const n=parseInt(h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;}
 function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
@@ -1205,7 +1210,7 @@ if(matchMedia('(hover:hover) and (pointer:fine)').matches && !reduce){
 }
 
 // ---- moving sheen (scroll-driven) ----
-function updateSheen(){const y=window.scrollY||document.documentElement.scrollTop;document.documentElement.style.setProperty('--sheen',Math.min(y/700,1)*100+'%');}
+function updateSheen(){if(lowPerf)return;const y=window.scrollY||document.documentElement.scrollTop;document.documentElement.style.setProperty('--sheen',Math.min(y/700,1)*100+'%');}
 addEventListener('scroll',updateSheen,{passive:true});
 
 // ---- odometer + counters ----
@@ -1246,7 +1251,7 @@ function greenCount(){const a=windowAgg();return Math.min(NB,Math.round(NB*a.dir
 function setBubbleTargets(){const ng=greenCount();bubbles.forEach((b,i)=>{b.isGreen=i<ng;});}
 function sizeMatrix(){
   const cv=document.getElementById('matrixCanvas');if(!cv)return null;
-  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const dpr=window.rkPerf?rkPerf.dpr():Math.min(window.devicePixelRatio||1,2);
   const w=cv.clientWidth||760,h=cv.clientHeight||430;
   cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
   handles.matrixCtx=ctx;handles.mw=w;handles.mh=h;return ctx;
@@ -1296,7 +1301,7 @@ function matrixStep(){
     if(Math.abs(tX-b.curX)>0.0015||Math.abs(tY-b.curY)>0.0015||Math.abs(tM-b.mix)>0.01||Math.abs(1-b.scale)>0.01)moving=true;
   }
   renderMatrix();
-  mRAF = moving && !reduce ? requestAnimationFrame(matrixStep) : null;
+  mRAF = moving && canvasLive() ? requestAnimationFrame(matrixStep) : null;
 }
 function kickMatrix(){if(!mRAF)mRAF=requestAnimationFrame(matrixStep);}
 function drawMatrixIntro(){
@@ -1304,10 +1309,10 @@ function drawMatrixIntro(){
   const ng=greenCount();
   bubbles.forEach((b,i)=>{
     const migrating = b.isGreen && i>=ng-RESCUED_INTRO;
-    if(migrating){b.curX=b.tx;b.curY=b.ty;b.mix=0;b.scale=reduce?1:0.85;}
-    else{b.curX=b.isGreen?b.gx:b.tx;b.curY=b.isGreen?b.gy:b.ty;b.mix=b.isGreen?1:0;b.scale=reduce?1:0;}
+    if(migrating){b.curX=b.tx;b.curY=b.ty;b.mix=0;b.scale=lowPerf?1:0.85;}
+    else{b.curX=b.isGreen?b.gx:b.tx;b.curY=b.isGreen?b.gy:b.ty;b.mix=b.isGreen?1:0;b.scale=lowPerf?1:0;}
   });
-  if(reduce){renderMatrix();}else{kickMatrix();}
+  if(lowPerf){renderMatrix();}else{kickMatrix();}
 }
 function snapMatrix(){if(!sizeMatrix())return;renderMatrix();}
 // hover tooltip + parallax
@@ -1596,10 +1601,11 @@ function boot(){
   renderUpsellStats(!reduce);
   renderConsent(!reduce);
   drawMatrixIntro();
-  updateSheen();
+  if(!lowPerf) updateSheen();
   booted=true;
   let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{snapMatrix();drawDonut(false);},160);});
-  if(!reduce){ setInterval(tick,12000); setInterval(upsellTick,15000); }
+  if(window.rkPerf){ rkPerf.tick(tick,12000,30000); rkPerf.tick(upsellTick,15000,30000); }
+  else if(!reduce){ setInterval(tick,12000); setInterval(upsellTick,15000); }
 }
 if(document.readyState!=='loading') boot(); else document.addEventListener('DOMContentLoaded',boot);
 </script>

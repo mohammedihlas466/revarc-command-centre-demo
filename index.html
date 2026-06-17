@@ -6,7 +6,10 @@
 <title>RevArc Command Centre · Triage Feed · v10</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/revarc-perf.css">
+<script src="assets/revarc-perf.js"></script>
 <style>
 :root[data-theme="dark"]{
   --bg-base:#050607; --bg-sunken:#020303;
@@ -514,6 +517,7 @@ body.cursor-on .cursor-ring.hot{width:44px;height:44px;opacity:.55;background:tr
 
 <script>
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lowPerf = window.rkPerf ? rkPerf.low : (reduce || matchMedia('(max-width:760px)').matches || matchMedia('(pointer:coarse)').matches);
 let chartReady=false, booted=false;
 
 (function(){
@@ -617,7 +621,7 @@ if(matchMedia('(hover:hover) and (pointer:fine)').matches && !reduce){
 
 // ---- moving sheen on glass (scroll-driven) ----
 const scroller=document.querySelector('.main')||window;
-function updateSheen(){const sc=document.querySelector('.content');const y=window.scrollY||document.documentElement.scrollTop;document.documentElement.style.setProperty('--sheen',Math.min(y/700,1)*100+'%');}
+function updateSheen(){if(lowPerf)return;const sc=document.querySelector('.content');const y=window.scrollY||document.documentElement.scrollTop;document.documentElement.style.setProperty('--sheen',Math.min(y/700,1)*100+'%');}
 addEventListener('scroll',updateSheen,{passive:true});
 
 // ---- odometer ----
@@ -648,7 +652,7 @@ function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+
 function renderChart(){
   const c=document.getElementById('yieldChart'); if(!c)return;
   const wrap=c.parentElement;
-  const ratio=window.devicePixelRatio||1;
+  const ratio=window.rkPerf?rkPerf.dpr():(window.devicePixelRatio||1);
   const W=Math.max(wrap.clientWidth,10), H=Math.max(wrap.clientHeight||96,40);
   c.width=W*ratio; c.height=H*ratio; c.style.width=W+'px'; c.style.height=H+'px';
   const ctx=c.getContext('2d'); ctx.setTransform(ratio,0,0,ratio,0,0); ctx.clearRect(0,0,W,H);
@@ -1026,8 +1030,8 @@ window.addEventListener('load',()=>{
   setOdometer(document.getElementById('ndy'),0);
   requestAnimationFrame(()=>setOdometer(document.getElementById('ndy'),revenue+savings));
   document.querySelectorAll('.num').forEach(countUp);
-  fillBars(); updateSheen();
-  setInterval(pushEvent, 11000);
+  fillBars(); if(!lowPerf) updateSheen();
+  if(window.rkPerf) rkPerf.tick(pushEvent,11000,30000); else setInterval(pushEvent, 11000);
 });
 </script>
 <style>

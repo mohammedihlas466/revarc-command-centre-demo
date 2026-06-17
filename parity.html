@@ -6,7 +6,10 @@
 <title>RevArc Command Centre · Parity Radar · v1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/revarc-perf.css">
+<script src="assets/revarc-perf.js"></script>
 <style>
 :root[data-theme="dark"]{
   --bg-base:#050607; --bg-sunken:#020303;
@@ -1041,6 +1044,8 @@ body.cursor-on .cursor-ring.hot{width:44px;height:44px;opacity:.55;background:tr
 </style>
 <script>
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lowPerf = window.rkPerf ? rkPerf.low : (reduce || matchMedia('(max-width:760px)').matches || matchMedia('(pointer:coarse)').matches);
+function canvasLive(){ return !lowPerf && !document.hidden; }
 
 function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -1093,7 +1098,7 @@ function applyTheme(t){
   document.documentElement.dataset.theme = t;
   document.getElementById('toDark').classList.toggle('on', t==='dark');
   document.getElementById('toLight').classList.toggle('on', t==='light');
-  if(booted){ renderScorecard(); if(reduce) drawRadar(0); }
+  if(booted){ renderScorecard(); if(!canvasLive()) drawRadar(0); }
 }
 function setTheme(t, e){
   if(document.documentElement.dataset.theme === t) return;
@@ -1134,7 +1139,7 @@ if(matchMedia('(hover:hover) and (pointer:fine)').matches && !reduce){
 }
 
 // ---- moving sheen (scroll-driven) ----
-function updateSheen(){const y=window.scrollY||document.documentElement.scrollTop;document.documentElement.style.setProperty('--sheen',Math.min(y/700,1)*100+'%');}
+function updateSheen(){if(lowPerf)return;const y=window.scrollY||document.documentElement.scrollTop;document.documentElement.style.setProperty('--sheen',Math.min(y/700,1)*100+'%');}
 addEventListener('scroll',updateSheen,{passive:true});
 
 // ---- counters ----
@@ -1148,14 +1153,14 @@ function genOneBlip(b){
   b.ang=ch.ang+(rrnd()*2-1)*spread;
   b.szN=2.6+Math.max(0,Math.min(1,(b.atRisk-150)/240))*3.0;
   b.sevTo=RESOLVED.has(b.status)?0.06:Math.max(0.16,Math.min(b.gap/15,1));
-  b.sev=reduce?b.sevTo:0.02;
-  b.scl=reduce?1:0;
+  b.sev=lowPerf?b.sevTo:0.02;
+  b.scl=lowPerf?1:0;
 }
 function genBlips(){breaches.forEach((b,i)=>{genOneBlip(b);if(!b.detected)b.detected=Date.now()-(40-i*5)*60000;});}
 function setBlipTargets(){breaches.forEach(b=>{b.sevTo=RESOLVED.has(b.status)?0.06:Math.max(0.16,Math.min(b.gap/15,1));if(b.sev==null)genOneBlip(b);});}
 function sizeRadar(){
   const cv=document.getElementById('radarCanvas');if(!cv)return null;
-  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const dpr=window.rkPerf?rkPerf.dpr():Math.min(window.devicePixelRatio||1,2);
   const w=cv.clientWidth||760,h=cv.clientHeight||460;
   cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
   const side=Math.min(w,h);
@@ -1208,7 +1213,7 @@ function drawRadar(now){
   });
   // sweep beam (smooth conic comet-trail, calm cadence, annulus-clipped to protect centre)
   let ba=-Math.PI/2;
-  if(!reduce){
+  if(!lowPerf){
     ba=((now/7600*Math.PI*2)%(Math.PI*2))-Math.PI/2;
     ctx.save();
     ctx.beginPath();ctx.arc(RCX,RCY,RR,0,Math.PI*2);ctx.arc(RCX,RCY,R0,0,Math.PI*2,true);ctx.clip('evenodd');
@@ -1235,12 +1240,12 @@ function drawRadar(now){
   for(const b of breaches){
     if(b.sev==null)continue;
     b.sev+=(b.sevTo-b.sev)*0.12;b.scl+=(1-b.scl)*0.12;
-    if(!reduce){const pv=sd(b.ang,prevBa),cv=sd(b.ang,ba);if(pv>0&&cv<=0&&Math.abs(pv)<0.6&&Math.abs(cv)<0.6)b.pingT=now;}
+    if(!lowPerf){const pv=sd(b.ang,prevBa),cv=sd(b.ang,ba);if(pv>0&&cv<=0&&Math.abs(pv)<0.6&&Math.abs(cv)<0.6)b.pingT=now;}
     const col=ccol[b.status]||ccol[0];
     const rad=R0+b.sev*(RR-R0),x=RCX+Math.cos(b.ang)*rad,y=RCY+Math.sin(b.ang)*rad,r=b.szN*b.scl;
-    let lift=0;if(!reduce&&b.pingT){const a=(now-b.pingT)/900;if(a<1)lift=1-a;}
+    let lift=0;if(!lowPerf&&b.pingT){const a=(now-b.pingT)/900;if(a<1)lift=1-a;}
     // contact ping ripple (radar return on sweep pass)
-    if(!reduce&&b.pingT){const a=(now-b.pingT)/1100;if(a<1){const e=1-Math.pow(1-a,3);ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${(0.42*(1-a)).toFixed(3)})`;ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(x,y,r+e*20,0,Math.PI*2);ctx.stroke();}}
+    if(!lowPerf&&b.pingT){const a=(now-b.pingT)/1100;if(a<1){const e=1-Math.pow(1-a,3);ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${(0.42*(1-a)).toFixed(3)})`;ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(x,y,r+e*20,0,Math.PI*2);ctx.stroke();}}
     // soft halo: persistent + dim for live issues, transient lift on ping otherwise
     const haloA=(ALERT.has(b.status)?0.13:0)+lift*0.24;
     if(haloA>0.004){const hr=r*2.1,gr=ctx.createRadialGradient(x,y,0,x,y,hr);gr.addColorStop(0,`rgba(${col[0]},${col[1]},${col[2]},${haloA.toFixed(3)})`);gr.addColorStop(1,`rgba(${col[0]},${col[1]},${col[2]},0)`);ctx.fillStyle=gr;ctx.beginPath();ctx.arc(x,y,hr,0,Math.PI*2);ctx.fill();}
@@ -1254,9 +1259,11 @@ function drawRadar(now){
   handles.prevBa=ba;
 
 }
-function radarLoop(now){drawRadar(now||performance.now());rafR=requestAnimationFrame(radarLoop);}
-function kickRadar(){if(reduce)drawRadar(0);}
-function hoverLedger(id){hlId=id;document.querySelectorAll('.lrow').forEach(r=>r.classList.toggle('hl',+r.dataset.id===id));if(reduce)drawRadar(0);}
+function radarLoop(now){if(!canvasLive()){stopRadar();return;}drawRadar(now||performance.now());rafR=requestAnimationFrame(radarLoop);}
+function startRadar(){if(rafR||!canvasLive())return;rafR=requestAnimationFrame(radarLoop);}
+function stopRadar(){if(rafR){cancelAnimationFrame(rafR);rafR=null;}}
+function kickRadar(){if(!canvasLive())drawRadar(0);}
+function hoverLedger(id){hlId=id;document.querySelectorAll('.lrow').forEach(r=>r.classList.toggle('hl',+r.dataset.id===id));if(!canvasLive())drawRadar(0);}
 // radar hover tooltip + ledger cross-highlight
 (function radarInteractions(){
   const cv=document.getElementById('radarCanvas'),tip=document.getElementById('rTip');if(!cv||!tip)return;
@@ -1280,10 +1287,10 @@ function hoverLedger(id){hlId=id;document.querySelectorAll('.lrow').forEach(r=>r
       if(window.rkPlaceTip) window.rkPlaceTip(tip, r.left + hit._sx, r.top + hit._sy);
       else { let tx=hit._sx+16,ty=hit._sy-10;if(tx>r.width-196)tx=hit._sx-192;if(ty<6)ty=6; tip.style.left=tx+'px';tip.style.top=ty+'px';tip.classList.add('on'); }
     } else {tip.classList.remove('on');}
-    if(reduce)drawRadar(0);
+    if(!canvasLive())drawRadar(0);
   }
   function clear(){
-    hoverId=null;tip.classList.remove('on');document.querySelectorAll('.lrow').forEach(rw=>rw.classList.remove('hl'));if(reduce)drawRadar(0);
+    hoverId=null;tip.classList.remove('on');document.querySelectorAll('.lrow').forEach(rw=>rw.classList.remove('hl'));if(!canvasLive())drawRadar(0);
   }
   if(window.rkBindPointerSurface) window.rkBindPointerSurface(cv,probe,clear,'#rTip,.m-tip');
   else{
@@ -1519,11 +1526,13 @@ function boot(){
   renderLedger(null);
   renderScorecard();
   sizeRadar();
-  if(reduce){drawRadar(0);}else{rafR=requestAnimationFrame(radarLoop);}
-  updateSheen();
+  drawRadar(0);
+  startRadar();
+  if(window.rkPerf) rkPerf.visLoop(startRadar, stopRadar);
+  if(!lowPerf) updateSheen();
   booted=true;
-  let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{sizeRadar();if(reduce)drawRadar(0);},160);});
-  if(!reduce)setInterval(tick,12000);
+  let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{sizeRadar();if(!canvasLive())drawRadar(0);else drawRadar(performance.now());},160);});
+  if(window.rkPerf) rkPerf.tick(tick,12000,30000); else if(!reduce) setInterval(tick,12000);
 }
 if(document.readyState!=='loading')boot();else document.addEventListener('DOMContentLoaded',boot);
 </script>

@@ -6,7 +6,10 @@
 <title>RevArc Command Centre · The Ledger · v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/revarc-perf.css">
+<script src="assets/revarc-perf.js"></script>
 <style>
 :root[data-theme="dark"]{
   --bg-base:#050607; --bg-sunken:#020303;
@@ -229,6 +232,7 @@ body.cursor-on .cursor-ring.hot{width:48px;height:48px;opacity:.9;background:var
 .foot-note svg{flex:none}
 .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(12px);background:var(--surface-3);color:var(--text-primary);border:1px solid var(--border-default);border-radius:var(--r-control);padding:10px 16px;font-size:12.5px;font-weight:500;box-shadow:var(--elev-lg);opacity:0;pointer-events:none;transition:.28s var(--ease-out);z-index:300}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media(max-width:900px){.ltable .hide-sm{display:none}}
 @media(max-width:760px){
   .app{grid-template-columns:1fr}
@@ -249,7 +253,7 @@ body.cursor-on .cursor-ring.hot{width:48px;height:48px;opacity:.9;background:var
     border-bottom:none;position:relative;-webkit-tap-highlight-color:transparent;
     align-items:start;
   }
-  .ltable tr.lrow:active{background:var(--surface-2);transform:scale(.992);transition:transform .12s,background .12s}
+  .ltable tr.lrow:active{background:var(--surface-2);transform:none;transition:background .12s}
   .ltable tr.lrow td{display:block;padding:0;border:none;vertical-align:initial}
   .ltable tr.lrow td.hide-sm{display:none!important}
   .ltable tr.lrow td.r{text-align:right!important}
