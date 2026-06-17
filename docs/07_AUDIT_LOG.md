@@ -149,3 +149,65 @@ User tested live and reported only Triage + Horizon adapted. Root-caused per pag
 | R9 | Ledger | Shell collapsed at ≤900, but `.tablewrap{overflow:hidden}` **clipped** the 10-col table (cut off, not scrollable). | ≤760: `.tablewrap{overflow-x:auto}` + `.ltable{min-width:560px}` → table scrolls inside its card. | ✅ |
 
 All four re-validated **zero-new** (guests 5 / parity 7 / integrations 2 / ledger 2 = baseline). All new rules sit in ≤760/≤560 blocks → desktop untouched. Suite now collapses consistently: sidebar hides, Ctrl/Cmd+K + 1–6 remain the small-screen nav.
+
+---
+
+## J. Mobile shell + touch interactivity pass (2026-06-18)
+Full mobile UX layer across all six pages: drawer nav, bottom tab bar, coarse-pointer tap model, and per-page bento/card polish. Desktop rendering guarded — mobile-only rules live inside `@media (max-width:760px)` unless noted.
+
+| ID | Lens | Scope | Change | Status |
+|----|------|-------|--------|--------|
+| M1 | LAYOUT | all 6 | **Mobile shell:** bottom tab bar (`.rk-mnav`) + off-canvas drawer sidebar; `viewport-fit=cover`; content padding accounts for safe-area + bottom nav. | ✅ |
+| M2 | STA | horizon, guests, parity, index, integrations | **Coarse-pointer tooltips:** shared `rkBindPointerSurface` / `rkPlaceTip` / `rkBindHoverGroup` — charts and canvases respond to tap (not hover-only). | ✅ |
+| M3 | MOT | all 6 | **`pressBind` exclusions:** no `rk-pressed` scale on `canvas`, `.m-tip`, `.chart-tip`, heat cells, matrix/gateway wraps, `#ledgerList`, `#queueList`, `#upsellList` — fixes press shake and tooltip clipping. | ✅ |
+| M4 | BEN | parity | **Breach ledger mobile:** `#ledgerList .lrow` → Apple-style bento cards (`--surface-1`, summary grid, `--r-card`); status colors use contract tokens (`--negative`, `--concierge`, `--sentinel`, `--yield`). **Desktop `.l-*` color rules untouched** (mobile-only block). | ✅ |
+| M5 | VIZ | parity | **Radar mobile:** larger hero canvas, compact legend, `radar-hint` + `<details class="radar-learn">` progressive disclosure; `sizeRadar`/`drawRadar` dynamic rim + label inset/clamping so Agoda/Expedia/Booking.com never clip edges. | ✅ |
+| M6 | BEN | guests | **Win-back + Upsell queues:** `#queueList` / `#upsellList` shared iOS card grid; grey `--surface-2` action buttons; neutral `qdone` state. | ✅ |
+| M7 | TYP | ledger | **Ledger amounts:** mobile card rows right-align monetary columns (`.l-owner`, `.l-book`, `.l-cum`). | ✅ |
+| M8 | BEN | integrations | **Integration registry mobile:** card layout with `--r-card` (replaces cramped table rows). | ✅ |
+| M9 | — | repo | **Deploy hygiene:** `.gitignore` added; pushed to `main` on `mohammedihlas466/revarc-command-centre-demo`; Vercel production verified on phone. | ✅ |
+
+**Commits (mobile polish):** `13516fd` — *RevArc Command Centre prototype with mobile-responsive polish across parity, guests, ledger, integrations pages*.
+
+---
+
+## K. Mobile performance pass (2026-06-18)
+User reported capable phone still felt heavy after mobile shell shipped. Root cause: 60fps canvas loops (Parity radar, Integration Sankey), `backdrop-filter: blur(34px)` on sticky chrome, scroll-driven sheen repaints, 1s DOM timers, uncapped chart DPR. Fix: shared perf assets + gated runtime — **desktop glass and full canvas motion preserved** on `(hover:hover) and (pointer:fine)` above 760px.
+
+| ID | Lens | Scope | Change | Status |
+|----|------|-------|--------|--------|
+| PF1 | MOT | parity, integrations | **Canvas RAF gated:** `radarLoop` / `gatewayLoop` static on mobile, coarse pointer, or `prefers-reduced-motion`; `visibilitychange` pauses/resumes loops when tab hidden. Tap tooltips still work on static frame. | ✅ |
+| PF2 | ELV | all 6 via `assets/revarc-perf.css` | **Mobile glass downgrade:** `--glass-blur:none`, solid `--surface-1` fills on sidebar/topbar/bottom nav/cards — removes GPU-heavy backdrop blur during scroll. Desktop blur unchanged. | ✅ |
+| PF3 | MOT | all 6 | **Scroll sheen JS skipped** when `lowPerf` (`updateSheen` early return); reduces per-scroll repaints on phone/iPad. | ✅ |
+| PF4 | MOT | guests | **Matrix bubble animation** gated — `matrixStep` RAF only when `canvasLive()`; intro snaps on mobile. | ✅ |
+| PF5 | — | index, horizon, parity, integrations, guests | **DPR cap 1.5×** on mobile/coarse via `rkPerf.dpr()` (index yield chart was uncapped). | ✅ |
+| PF6 | — | integrations, index, guests, parity | **Background timers throttled** on mobile (`rkPerf.tick` with longer intervals); skip work when `document.hidden`. Integrations `syncAge` 1s→5s on mobile. | ✅ |
+| PF7 | TYP | all 6 | **Font load trimmed:** Inter 300/700 + JetBrains 400 dropped; kept Inter 400/500/600 + JetBrains 500; `<noscript>` fallback added. | ✅ |
+| PF8 | LAYOUT | all 6 via `revarc-perf.css` | **`content-visibility:auto`** on below-fold `.panel` / `.card.glass` ≤760px — faster initial paint. | ✅ |
+| PF9 | — | repo | **New shared assets:** `assets/revarc-perf.js` (flags, `visLoop`, `tick`) + `assets/revarc-perf.css` linked from all six `<head>` blocks (cacheable across navigations). | ✅ |
+
+**Commit:** `a10cacf` — *Improve mobile performance with shared perf assets and lighter canvas/compositing*.
+
+**Trade-off (accepted):** mobile/iPad lose animated radar sweep + Sankey ribbon highlights and scroll sheen; static canvases + solid chrome remain. Revisit only if user requests motion back on tablet landscape.
+
+---
+
+## L. Bento noise texture — mobile/iPad consistency fix (2026-06-18)
+After PF1–PF9, user reported **inconsistent** premium grain: some bentos flat, others textured on phone/iPad.
+
+| ID | Lens | Scope | Finding | Fix | Status |
+|----|------|-------|---------|-----|--------|
+| BN1 | BEN | all 6 via `revarc-perf.css` | PF pass hid `.card::after`, `.card.glass::after`, `.panel.glass::after` **and** `.sheen::after` on `(max-width:760px),(pointer:coarse)`. Static fractal noise uses `::after` on `.card`/`.panel`; `.card.sheen` also has noise on `::before` (not hidden) → **patchy look**. | **Surgical:** restore card/panel `::after` noise; keep **only** `.sheen::after{display:none}` (scroll light-sweep, not grain). One line in `assets/revarc-perf.css`. No HTML/JS/desktop change. | ✅ |
+
+**Commit:** `1c330f5` — *Restore bento card noise texture on mobile while keeping scroll sheen disabled*.
+
+**Verify on log-off:** hard-refresh phone/iPad after Vercel deploy; spot-check Parity breach cards, Guests queue bentos, Triage hero hub — grain should match desktop; scroll sheen should stay off on touch.
+
+---
+
+### Going forward (updated 2026-06-18)
+Every remaining page-by-page pass now reports **all** lenses (spacing/padding, alignment, layout, typography/hierarchy, responsive, interaction states) — not color alone — labelling each finding *fixed (safe)* or *needs render verification*.
+
+**Open P2 from prior passes** still apply: X9 spacing rhythm, X10 elevation ladder, viz legends (P4, G4, H5), X2 small green/amber AA in light, X8 radius vocabulary, X13 consent-bar color.
+
+**New optional follow-up (not blocking):** extract duplicated mobile shell + command palette (~4k lines × 6 pages) into cached `revarc-core.css` / `revarc-shell.js` for faster repeat navigations — larger refactor, deferred until requested.
